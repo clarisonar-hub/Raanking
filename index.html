@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rank Dose</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Orbitron',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;overflow:hidden;}
+h1{text-align:center;color:#00fff7;text-shadow:0 0 10px #00fff7,0 0 20px #00fff7;margin-top:20px;}
+.ranking-panel{position:absolute;right:20px;top:100px;width:300px;background:rgba(0,0,0,0.6);padding:15px;border-radius:15px;box-shadow:0 0 20px #00fff7;display:none;animation:slideIn 1s forwards;}
+@keyframes slideIn{from{right:-350px;opacity:0;}to{right:20px;opacity:1;}}
+.ranking-panel h2{margin-top:0;color:#ff00ff;text-align:center;text-shadow:0 0 5px #ff00ff;}
+.bot-entry{margin:10px 0;font-size:16px;display:flex;justify-content:space-between;transition:0.5s;}
+.month-badge{position:absolute;top:20px;right:20px;background:#ff00ff;padding:10px 20px;border-radius:20px;font-weight:bold;text-shadow:0 0 5px #ff00ff;animation:glow 1.5s infinite alternate;}
+@keyframes glow{from{box-shadow:0 0 10px #ff00ff;}to{box-shadow:0 0 30px #ff00ff;}}
+.footer-button{position:absolute;bottom:20px;padding:15px 30px;border-radius:30px;font-weight:bold;color:#ccc;font-size:18px;text-shadow:0 0 5px #000;box-shadow:0 0 15px #000 inset;cursor:pointer;transition:0.3s;z-index:10;}
+#startBtn{left:40%;} #resetBtn{left:55%;} #unlockBtn{left:70%;}
+.footer-button.active{background:#00ff00;color:#000;box-shadow:0 0 20px #00ff00,0 0 40px #00ff00 inset;text-shadow:0 0 10px #00ff00;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+.bot-car{position:absolute;width:80px;height:40px;border-radius:15px;text-align:center;line-height:40px;font-weight:bold;color:#fff;font-size:14px;z-index:5;text-shadow:0 0 10px #000;}
+.bot1{background:#FFD700;box-shadow:0 0 25px #FFD700,0 0 60px #FFD700;} /* dourado líder */
+.bot2{background:#00ffbf;box-shadow:0 0 15px #00ffbf,0 0 40px #00ffbf;}
+.bot3{background:#ffbf00;box-shadow:0 0 15px #ffbf00,0 0 40px #ffbf00;}
+.bot4{background:#00bfff;box-shadow:0 0 15px #00bfff,0 0 40px #00bfff;}
+.bot5{background:#ff4000;box-shadow:0 0 15px #ff4000,0 0 40px #ff4000;}
+.explosion,.teaser{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);padding:30px 50px;border-radius:25px;font-size:24px;font-weight:bold;text-align:center;opacity:0;z-index:20;animation:explode 1s ease-out forwards;}
+.explosion{background:linear-gradient(45deg,#ff0,#f00,#ff0);box-shadow:0 0 50px #ff0,0 0 100px #f00;}
+.teaser{background:linear-gradient(45deg,#00ff00,#00ffff);box-shadow:0 0 50px #0ff,0 0 100px #0ff inset;}
+@keyframes explode{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;}50%{transform:translate(-50%,-50%) scale(1.2);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+canvas{position:absolute;top:0;left:0;z-index:1;}
+</style>
+</head>
+<body>
+<h1>Rank Dose</h1>
+
+<div class="ranking-panel" id="rankingPanel">
+<h2>Classificação</h2>
+<div class="bot-entry">1. apelidoSPgo | 30 vendas | R$ 1.450,00</div>
+<div class="bot-entry">2. TurboBot | 10 vendas | R$ 480,00</div>
+<div class="bot-entry">3. FlashVend | 8 vendas | R$ 380,00</div>
+<div class="bot-entry">4. SushiMasterX | 5 vendas | R$ 250,00</div>
+<div class="bot-entry">5. VelozByte | 3 vendas | R$ 120,00</div>
+</div>
+
+<div class="month-badge">🏆 Outubro</div>
+<div class="footer-button" id="unlockBtn">Desbloqueando unidades</div>
+<div class="footer-button" id="startBtn">▶ START</div>
+<div class="footer-button" id="resetBtn">⟲ RESET</div>
+
+<div id="bot1Car" class="bot-car bot1">apelidoSPgo</div>
+<div id="bot2Car" class="bot-car bot2">TurboBot</div>
+<div id="bot3Car" class="bot-car bot3">FlashVend</div>
+<div id="bot4Car" class="bot-car bot4">SushiMasterX</div>
+<div id="bot5Car" class="bot-car bot5">VelozByte</div>
+
+<canvas id="trackCanvas"></canvas>
+
+<script>
+const canvas=document.getElementById('trackCanvas');
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+const centerX=canvas.width/2;
+const centerY=canvas.height/2+50;
+const a=250,b=150;
+const totalLaps=3;
+
+let raceStarted=false;
+let animating=false;
+
+const bots=[
+{id:'bot1Car',t:0,speed:0.0012,color:'#FFD700',trail:[],acc:0.000008,laps:0,vendas:30,baseSpeed:0.0012},
+{id:'bot2Car',t:0,speed:0.0010,color:'#00ffbf',trail:[],acc:0.000008,laps:0,vendas:10,baseSpeed:0.0010},
+{id:'bot3Car',t:0,speed:0.0009,color:'#ffbf00',trail:[],acc:0.000008,laps:0,vendas:8,baseSpeed:0.0009},
+{id:'bot4Car',t:0,speed:0.0008,color:'#00bfff',trail:[],acc:0.000008,laps:0,vendas:5,baseSpeed:0.0008},
+{id:'bot5Car',t:0,speed:0.0007,color:'#ff4000',trail:[],acc:0.000008,laps:0,vendas:3,baseSpeed:0.0007},
+];
+
+bots.sort((a,b)=>b.vendas-a.vendas);
+
+function drawTrack(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.lineWidth=8;
+ctx.shadowBlur=20;
+ctx.shadowColor="#00ffff";
+ctx.strokeStyle="#00ffff";
+ctx.beginPath();
+for(let i=0;i<=200;i++){
+let angle=(i/200)*2*Math.PI;
+let x=centerX+a*Math.sin(angle);
+let y=centerY+b*Math.sin(angle)*Math.cos(angle);
+if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);}
+ctx.stroke();
+ctx.shadowBlur=0;
+
+ctx.fillStyle="#00ff00";
+ctx.beginPath();
+ctx.arc(centerX,centerY-b,15,0,2*Math.PI);
+ctx.fill();
+ctx.fillStyle="#fff";
+ctx.font="16px Orbitron";
+ctx.fillText("START/FINISH",centerX-50,centerY-b-20);
+
+// trails neon
+bots.forEach(bot=>{
+ctx.beginPath();
+for(let i=0;i<bot.trail.length;i++){
+let p=bot.trail[i];
+ctx.fillStyle=bot.color;
+ctx.globalAlpha=i/bot.trail.length;
+ctx.fillRect(p.x-5,p.y-5,10,10);}
+ctx.globalAlpha=1;});
+}
+
+function animateBots(){
+if(!raceStarted){animating=false;return;}
+animating=true;
+drawTrack();
+let finished=false;
+
+bots.forEach(bot=>{
+if(bot.t<totalLaps) bot.t+=bot.speed;
+bot.speed+=bot.acc*Math.random(); // variação de velocidade
+if(bot.t>=totalLaps) bot.laps=totalLaps;
+
+let angle=(bot.t/totalLaps)*2*Math.PI;
+let x=centerX+a*Math.sin(angle);
+let y=centerY+b*Math.sin(angle)*Math.cos(angle);
+bot.trail.push({x,y});
+if(bot.trail.length>60) bot.trail.shift();
+document.getElementById(bot.id).style.left=x-40+"px";
+document.getElementById(bot.id).style.top=y-20+"px";});
+
+// líder terminou
+if(bots[0].t>=totalLaps) finished=true;
+
+if(!finished) requestAnimationFrame(animateBots);
+else showExplosionAndRanking();
+}
+
+function showExplosionAndRanking(){
+const explosion=document.createElement('div');
+explosion.className='explosion';
+explosion.innerHTML='apelidoSPgo | BotVendedor<br>🎉 Vendedor do Mês! 🎉';
+document.body.appendChild(explosion);
+setTimeout(()=>{
+explosion.remove();
+document.getElementById('rankingPanel').style.display='block';
+animating=false;
+raceStarted=false;
+},3000);
+}
+
+document.getElementById('startBtn').addEventListener('click',()=>{
+if(!animating){
+    bots.forEach(bot=>{
+        bot.t=0; bot.trail=[]; bot.laps=0; bot.speed=bot.baseSpeed;
+    });
+    raceStarted=true;
+    animateBots();
+}
+});
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+raceStarted=false;
+animating=false;
+bots.forEach(bot=>{
+    bot.t=0; bot.trail=[]; bot.laps=0; bot.speed=bot.baseSpeed;
+    let elem=document.getElementById(bot.id);
+    elem.style.left=0; elem.style.top=0;
+});
+document.getElementById('rankingPanel').style.display='none';
+});
+
+document.getElementById('unlockBtn').addEventListener('click',()=>{
+const teaser=document.createElement('div');
+teaser.className='teaser';
+teaser.innerHTML='⚡ Novas unidades em construção!<br>Prepare-se para o lançamento épico…<br><strong>Data de estreia em breve!</strong>';
+document.body.appendChild(teaser);
+setTimeout(()=>teaser.remove(),4000);
+document.getElementById('unlockBtn').classList.add('active');
+});
+</script>
+</body>
+</html>
