@@ -128,7 +128,7 @@ canvas{display:block;}
   <button id="startBtn">▶ START</button>
   <button id="resetBtn">⟲ RESET</button>
   <button id="tableBtn">📋 Tabela de Lucros</button>
-  <button id="simulaBtn">📦 Simular Pedidos</button>
+  <button id="simulateBtn">💻 Simular Vendas</button>
 </div>
 
 <div class="ranking-panel" id="rankingPanel">
@@ -156,23 +156,24 @@ const produtos=[
   {nome:"Água 500ml", preco:5, custo:2, bot:1},
 ];
 
-// Bots
+// Bots todos Level 1
 const bots=[
-  {id:'bot1Car',nome:'apelidoSPgo',level:1,color:'#FFD700',vendas:[{produto:"Combo de Sushi Simples",qtd:10},{produto:"Lanche Econômico",qtd:5}],t:0,trails:[]},
-  {id:'bot2Car',nome:'TurboBot',level:1,color:'#00ffbf',vendas:[{produto:"Combo de Sushi Simples",qtd:5},{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
-  {id:'bot3Car',nome:'FlashVend',level:1,color:'#ffbf00',vendas:[{produto:"Lanche Econômico",qtd:8}],t:0,trails:[]},
-  {id:'bot4Car',nome:'SushiMasterX',level:1,color:'#00bfff',vendas:[{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
-  {id:'bot5Car',nome:'VelozByte',level:1,color:'#ff4000',vendas:[{produto:"Refrigerante lata",qtd:3}],t:0,trails:[]},
+  {id:'bot1Car',nome:'apelidoSPgo',color:'#FFD700',level:1,vendas:[],t:0,trails:[]},
+  {id:'bot2Car',nome:'TurboBot',color:'#00ffbf',level:1,vendas:[],t:0,trails:[]},
+  {id:'bot3Car',nome:'FlashVend',color:'#ffbf00',level:1,vendas:[],t:0,trails:[]},
+  {id:'bot4Car',nome:'SushiMasterX',color:'#00bfff',level:1,vendas:[],t:0,trails:[]},
+  {id:'bot5Car',nome:'VelozByte',color:'#ff4000',level:1,vendas:[],t:0,trails:[]},
 ];
 
 let raceStarted=false;
 const totalLaps=1;
+let diaSimulado=1;
 
 // Cálculos
-function totalVendasBot(bot){return bot.vendas.reduce((s,v)=>s+v.qtd,0);}
-function totalVendasR(bot){return bot.vendas.reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+(p?p.preco*v.qtd:0);},0);}
-function totalLucroBot(bot){return bot.vendas.reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+(p?p.bot*v.qtd:0);},0);}
-function totalLucroLoja(bot){return bot.vendas.reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+(p?p.preco*v.qtd - p.custo*v.qtd:0);},0);}
+function totalVendasBot(bot){return bot.vendas.flat().reduce((s,v)=>s+v.qtd,0);}
+function totalVendasR(bot){return bot.vendas.flat().reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+(p?p.preco*v.qtd:0);},0);}
+function totalLucroBot(bot){return bot.vendas.flat().reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+(p?p.bot*v.qtd:0);},0);}
+function totalLucroLoja(bot){return bot.vendas.flat().reduce((s,v)=>{const p=produtos.find(prod=>prod.nome===v.produto);return s+((p?p.preco-p.custo:0)*v.qtd);},0);}
 
 // Ranking
 function atualizarRanking(){
@@ -201,20 +202,21 @@ bots.forEach(bot=>{
   document.body.appendChild(div);
 });
 
-// Pista curva centralizada verticalmente
+// Pista centralizada
 function getTrackPosition(bot){
   const centerX=canvas.width/2;
-  const centerY=canvas.height/2 - ((bots.length-1)/2*90); // centralizado
-  const angle = bot.t*2*Math.PI;
-  const y = centerY + bots.indexOf(bot)*90;
-  const x = centerX + Math.sin(angle)*(canvas.width/2 - 200);
+  const centerY=canvas.height/2+50;
+  const trackWidth=canvas.width-400;
+  const trackSpacing = 90;
+  const angle=bot.t*2*Math.PI;
+  const y=centerY + bots.indexOf(bot)*trackSpacing;
+  const x=centerX + Math.sin(angle)*trackWidth/2;
   return {x,y};
 }
 
 // Draw
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
   bots.forEach(bot=>{
     const pos=getTrackPosition(bot);
     bot.trails.push({x:pos.x,y:pos.y});
@@ -233,12 +235,16 @@ function draw(){
     ctx.shadowColor='#00ffff';
     ctx.lineWidth=6;
     ctx.beginPath();
-    ctx.ellipse(canvas.width/2, canvas.height/2 - ((bots.length-1)/2*90) + bots.indexOf(bot)*90, canvas.width/2-200, 45, 0,0,2*Math.PI);
+    const centerX=canvas.width/2;
+    const centerY=canvas.height/2+50;
+    const trackWidth=canvas.width-400;
+    const trackSpacing = 90;
+    ctx.ellipse(centerX, centerY + bots.indexOf(bot)*trackSpacing, trackWidth/2, trackSpacing/2, 0,0,2*Math.PI);
     ctx.stroke();
     ctx.shadowBlur=0;
 
     ctx.fillStyle=`rgba(0,255,0,${Math.abs(Math.sin(Date.now()/300))})`;
-    ctx.fillRect(pos.x+((canvas.width/2 - 200))-5, pos.y-15, 10,30);
+    ctx.fillRect(centerX + trackWidth/2 -5, pos.y-15, 10,30);
 
     const botElem=document.getElementById(bot.id);
     botElem.style.display='block';
@@ -247,7 +253,7 @@ function draw(){
   });
 }
 
-// Animar
+// Animate
 function animate(){
   if(!raceStarted) return;
   let finished=true;
@@ -272,7 +278,7 @@ function animate(){
   }
 }
 
-// Confetes
+// Confetti
 function confettiEffect(){
   const confetti=[];
   for(let i=0;i<100;i++){
@@ -332,33 +338,49 @@ document.getElementById('tableBtn').addEventListener('click',()=>{
   alert(tableText);
 });
 
-// Simulação de pedidos
-document.getElementById('simulaBtn').addEventListener('click',()=>{
-  const simWin = window.open('', '_blank', 'width=600,height=800,scrollbars=yes');
-  simWin.document.write('<html><head><title>Simulação de Pedidos</title><style>body{font-family:sans-serif;padding:10px;color:#000;} h2{color:#ff00ff;} pre{background:#f0f0f0;padding:10px;border-radius:8px;}</style></head><body>');
+// Simulação de Vendas
+document.getElementById('simulateBtn').addEventListener('click',()=>{
   bots.forEach(bot=>{
-    simWin.document.write(`<h2>Bot: ${bot.nome} (Level ${bot.level})</h2>`);
-    let pedidosSim = [
-      [{produto:"Combo de Sushi Simples",qtd:4},{produto:"Refrigerante lata",qtd:4}],
-      [{produto:"Pastel em Cone",qtd:2},{produto:"Refrigerante lata",qtd:2}],
-      [{produto:"Lanche Econômico",qtd:6},{produto:"Água 500ml",qtd:6}],
-    ];
-    let totalBot=0,totalLoja=0;
-    pedidosSim.forEach((pedido,i)=>{
-      simWin.document.write(`<pre>Pedido ${i+1}:\n`);
-      pedido.forEach(item=>{
-        const p=produtos.find(prod=>prod.nome===item.produto);
-        const valor=p.preco*item.qtd;
-        const lucroLoja=(p.preco - p.custo)*item.qtd;
-        totalBot+=p.bot*item.qtd;
-        totalLoja+=lucroLoja;
-        simWin.document.write(`  ${item.qtd}x ${item.produto} => R$ ${valor.toFixed(2)} | Lucro Loja: R$ ${lucroLoja.toFixed(2)}\n`);
-      });
-      simWin.document.write('</pre>');
-    });
-    simWin.document.write(`<strong>Lucro Bot: R$ ${totalBot.toFixed(2)} | Lucro Loja Total: R$ ${totalLoja.toFixed(2)}</strong><hr>`);
+    bot.vendas=[];
+    const numPedidos=Math.floor(Math.random()*4)+2;
+    for(let i=0;i<numPedidos;i++){
+      const pedido=[];
+      const familia = Math.random()>0.5;
+      if(familia){
+        pedido.push({produto:"Combo de Sushi Simples",qtd:2+Math.floor(Math.random()*3)});
+        pedido.push({produto:"Refrigerante lata",qtd:2+Math.floor(Math.random()*3)});
+      } else {
+        pedido.push({produto:"Pastel em Cone",qtd:2+Math.floor(Math.random()*3)});
+        pedido.push({produto:"Água 500ml",qtd:2+Math.floor(Math.random()*3)});
+      }
+      if(Math.random()>0.5) pedido.push({produto:"Lanche Econômico",qtd:1+Math.floor(Math.random()*3)});
+      bot.vendas.push(pedido);
+    }
   });
-  simWin.document.write('<button onclick="window.close();">Fechar e atualizar Rank</button></body></html>');
+
+  const simWindow=window.open('','Simulação','width=650,height=650');
+  simWindow.document.write(`<h2>Simulação de Vendas - Dia ${diaSimulado}</h2>`);
+  bots.forEach(bot=>{
+    simWindow.document.write(`<h3>${bot.nome} (Level ${bot.level})</h3>`);
+    bot.vendas.forEach((pedido,index)=>{
+      simWindow.document.write(`<strong>Pedido ${index+1}:</strong><br>`);
+      pedido.forEach(p=>{
+        const prod=produtos.find(pr=>pr.nome===p.produto);
+        const totalR=p.qtd*prod.preco;
+        const lucroLoja=p.qtd*(prod.preco-prod.custo);
+        simWindow.document.write(`${p.qtd}x ${p.produto} => R$ ${totalR.toFixed(2)} | Lucro Loja: R$ ${lucroLoja.toFixed(2)}<br>`);
+      });
+    });
+    simWindow.document.write(`<strong>Lucro Bot: R$ ${totalLucroBot(bot).toFixed(2)} | Lucro Loja Total: R$ ${totalLucroLoja(bot).toFixed(2)}</strong><hr>`);
+  });
+  simWindow.document.write(`<button id="backBtn">Atualizar Vendas / Voltar</button>`);
+  simWindow.document.write(`<script>
+    document.getElementById('backBtn').addEventListener('click',()=>{
+      window.opener.atualizarRanking();
+      window.close();
+    });
+  <\/script>`);
+  diaSimulado++;
 });
 
 draw();
