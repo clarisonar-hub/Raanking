@@ -52,7 +52,7 @@ canvas{display:block;}
   width:300px;
   max-height:80vh;
   overflow:auto;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.8);
   padding:15px;
   border-radius:15px;
   box-shadow:0 0 20px #00fff7;
@@ -112,6 +112,36 @@ canvas{display:block;}
   z-index:100;
   display:none;
 }
+.modal{
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.9);
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 0 20px #00fff7;
+  z-index:200;
+  display:none;
+  max-width:90%;
+  max-height:80%;
+  overflow:auto;
+}
+.modal h3{
+  text-align:center;
+  color:#ff00ff;
+  text-shadow:0 0 5px #ff00ff;
+  margin-bottom:10px;
+}
+.modal button{
+  display:block;
+  margin:10px auto 0;
+  padding:8px 15px;
+  font-weight:bold;
+  border-radius:10px;
+  background:#00ff00;
+  color:#000;
+  cursor:pointer;
+}
 @media(max-width:600px){
   .ranking-panel{width:90%;right:5%;top:60px;padding:10px;}
   .sidebar{top:60px;left:5px;}
@@ -137,6 +167,13 @@ canvas{display:block;}
 
 <div class="month-badge">🏆 Outubro</div>
 <div class="countdown" id="countdown">3</div>
+
+<div class="modal" id="modalTable">
+  <h3>Tabela de Lucros</h3>
+  <pre id="modalContent"></pre>
+  <button id="closeModal">Fechar</button>
+</div>
+
 <canvas id="trackCanvas"></canvas>
 
 <script>
@@ -155,13 +192,13 @@ const produtos=[
   {nome:"Água 500ml", preco:5, custo:2, bot:1},
 ];
 
-// Bots
+// Bots com Level
 const bots=[
-  {id:'bot1Car',nome:'apelidoSPgo',color:'#FFD700',vendas:[{produto:"Combo de Sushi Simples",qtd:10},{produto:"Lanche Econômico",qtd:5}],t:0,trails:[]},
-  {id:'bot2Car',nome:'TurboBot',color:'#00ffbf',vendas:[{produto:"Combo de Sushi Simples",qtd:5},{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
-  {id:'bot3Car',nome:'FlashVend',color:'#ffbf00',vendas:[{produto:"Lanche Econômico",qtd:8}],t:0,trails:[]},
-  {id:'bot4Car',nome:'SushiMasterX',color:'#00bfff',vendas:[{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
-  {id:'bot5Car',nome:'VelozByte',color:'#ff4000',vendas:[{produto:"Refrigerante lata",qtd:3}],t:0,trails:[]},
+  {id:'bot1Car',nome:'apelidoSPgo',level:1,color:'#FFD700',vendas:[{produto:"Combo de Sushi Simples",qtd:10},{produto:"Lanche Econômico",qtd:5}],t:0,trails:[]},
+  {id:'bot2Car',nome:'TurboBot',level:1,color:'#00ffbf',vendas:[{produto:"Combo de Sushi Simples",qtd:5},{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
+  {id:'bot3Car',nome:'FlashVend',level:1,color:'#ffbf00',vendas:[{produto:"Lanche Econômico",qtd:8}],t:0,trails:[]},
+  {id:'bot4Car',nome:'SushiMasterX',level:1,color:'#00bfff',vendas:[{produto:"Pastel em Cone",qtd:5}],t:0,trails:[]},
+  {id:'bot5Car',nome:'VelozByte',level:1,color:'#ff4000',vendas:[{produto:"Refrigerante lata",qtd:3}],t:0,trails:[]},
 ];
 
 let raceStarted=false;
@@ -180,7 +217,7 @@ function atualizarRanking(){
   botsOrdenados.forEach((bot,i)=>{
     const div=document.createElement('div');
     div.className='bot-entry';
-    div.innerHTML=`<strong>#${i+1} ${bot.nome}</strong><br>Total Vendas: ${totalVendasBot(bot)}<br>Total Vendas (R$): ${totalVendasR(bot).toFixed(2)}<br>Total Bot: R$ ${totalLucroBot(bot).toFixed(2)}`;
+    div.innerHTML=`<strong>#${i+1} ${bot.nome} (Level ${bot.level})</strong><br>Total Vendas: ${totalVendasBot(bot)}<br>Total Vendas (R$): ${totalVendasR(bot).toFixed(2)}<br>Total Bot: R$ ${totalLucroBot(bot).toFixed(2)}`;
     rankingDiv.appendChild(div);
   });
 }
@@ -195,14 +232,14 @@ bots.forEach(bot=>{
   document.body.appendChild(div);
 });
 
-// Pista centralizada
+// Pista curva centralizada
 function getTrackPosition(bot){
   const centerX=canvas.width/2;
   const centerY=canvas.height/2;
-  const trackWidth=canvas.width*0.6;
-  const trackSpacing = 90;
+  const trackWidth=canvas.width-400;
+  const trackSpacing=90;
   const angle = bot.t*2*Math.PI;
-  const y = centerY + (bots.indexOf(bot)-(bots.length-1)/2)*trackSpacing;
+  const y = centerY + bots.indexOf(bot)*trackSpacing - (trackSpacing*(bots.length-1))/2;
   const x = centerX + Math.sin(angle)*trackWidth/2;
   return {x,y};
 }
@@ -210,7 +247,6 @@ function getTrackPosition(bot){
 // Draw
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
   bots.forEach(bot=>{
     const pos=getTrackPosition(bot);
     bot.trails.push({x:pos.x,y:pos.y});
@@ -229,16 +265,12 @@ function draw(){
     ctx.shadowColor='#00ffff';
     ctx.lineWidth=6;
     ctx.beginPath();
-    const centerX=canvas.width/2;
-    const centerY=canvas.height/2;
-    const trackWidth=canvas.width*0.6;
-    const trackSpacing=90;
-    ctx.ellipse(centerX, centerY + (bots.indexOf(bot)-(bots.length-1)/2)*trackSpacing, trackWidth/2, trackSpacing/2, 0,0,2*Math.PI);
+    ctx.ellipse(canvas.width/2, canvas.height/2 + bots.indexOf(bot)*90 - (90*(bots.length-1))/2, (canvas.width-400)/2, 45, 0,0,2*Math.PI);
     ctx.stroke();
     ctx.shadowBlur=0;
 
     ctx.fillStyle=`rgba(0,255,0,${Math.abs(Math.sin(Date.now()/300))})`;
-    ctx.fillRect(centerX + trackWidth/2 -5, pos.y-15, 10,30);
+    ctx.fillRect(canvas.width/2 + (canvas.width-400)/2 -5, pos.y-15, 10,30);
 
     const botElem=document.getElementById(bot.id);
     botElem.style.display='block';
@@ -247,15 +279,13 @@ function draw(){
   });
 }
 
-// Animar
+// Animate
 function animate(){
   if(!raceStarted) return;
   let finished=true;
-  const maxLucro=Math.max(...bots.map(b=>totalLucroBot(b)));
   bots.forEach(bot=>{
-    const lucro=totalLucroBot(bot);
     if(bot.t<totalLaps){
-      bot.t+=0.002 + 0.003*(lucro/maxLucro);
+      bot.t += 0.002*bot.level; // velocidade influenciada pelo level
       if(bot.t>totalLaps) bot.t=totalLaps;
       finished=false;
     }
@@ -269,20 +299,21 @@ function animate(){
     document.querySelectorAll('.sidebar button').forEach(b=>b.style.display='block');
     document.getElementById('rankingPanel').style.display='block';
     atualizarRanking();
+    playSound('win');
   }
 }
 
-// Confetes
+// Confetes aprimorados
 function confettiEffect(){
   const confetti=[];
-  for(let i=0;i<100;i++){
-    confetti.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,dx:(Math.random()-0.5)*4,dy:Math.random()*3+2,color:`hsl(${Math.random()*360},100%,50%)`});
+  for(let i=0;i<200;i++){
+    confetti.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,dx:(Math.random()-0.5)*4,dy:Math.random()*2+1,color:`hsl(${Math.random()*360},100%,50%)`,size:Math.random()*5+2});
   }
   function drawConfetti(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     confetti.forEach(c=>{
       ctx.fillStyle=c.color;
-      ctx.fillRect(c.x,c.y,5,5);
+      ctx.fillRect(c.x,c.y,c.size,c.size);
       c.x+=c.dx;c.y+=c.dy;
       if(c.y>canvas.height)c.y=0;
       if(c.x>canvas.width)c.x=0;
@@ -291,6 +322,15 @@ function confettiEffect(){
     if(!raceStarted) requestAnimationFrame(drawConfetti);
   }
   drawConfetti();
+}
+
+// Sons
+function playSound(type){
+  let audio;
+  if(type==='count') audio=new Audio('https://freesound.org/data/previews/146/146726_2615115-lq.mp3');
+  else if(type==='go') audio=new Audio('https://freesound.org/data/previews/331/331912_3248244-lq.mp3');
+  else if(type==='win') audio=new Audio('https://freesound.org/data/previews/331/331912_3248244-lq.mp3');
+  if(audio) audio.play();
 }
 
 // Botões
@@ -303,11 +343,13 @@ document.getElementById('startBtn').addEventListener('click',()=>{
   document.querySelectorAll('.sidebar button').forEach(b=>b.style.display='none');
 
   const countdownInterval=setInterval(()=>{
+    playSound('count');
     count--;
     if(count>0) countdownElem.innerText=count;
     else{
       clearInterval(countdownInterval);
       countdownElem.innerText='GO!';
+      playSound('go');
       bots.forEach(bot=>{ bot.t=0; bot.trails=[]; });
       raceStarted=true;
       document.getElementById('rankingPanel').style.display='none';
@@ -326,10 +368,16 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   draw();
 });
 
+// Modal de tabela
 document.getElementById('tableBtn').addEventListener('click',()=>{
-  let tableText='Produto | Preço | Custo | Lucro Bot\n';
-  produtos.forEach(p=>{tableText+=`${p.nome} | R$${p.preco} | R$${p.custo} | R$${p.bot}\n`;});
-  alert(tableText);
+  let content='';
+  produtos.forEach(p=>{content+=`${p.nome} | R$${p.preco} | R$${p.custo} | R$${p.bot}\n`;});
+  document.getElementById('modalContent').innerText=content;
+  document.getElementById('modalTable').style.display='block';
+});
+
+document.getElementById('closeModal').addEventListener('click',()=>{
+  document.getElementById('modalTable').style.display='none';
 });
 
 draw();
